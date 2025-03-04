@@ -6,49 +6,51 @@ namespace Snake
 {
     class Program
     {
-        static int windowWidth = 32;
-        static int windowHeight = 16;
-        static Random random = new Random();
-        static int score = 5;
-        static bool isGameOver = false;
-        static Pixel snakeHead = new Pixel();
-        static string currentDirection = "RIGHT";
-        static List<int> snakeBodyX = new List<int>();
-        static List<int> snakeBodyY = new List<int>();
-        static int foodX, foodY;
-        static bool directionChanged;
-        static DateTime startTime;
-        static DateTime currentTime;
-
         static void Main(string[] args)
         {
-            InitializeGame();
+            Game game = new Game();
+            game.Run();
+        }
+    }
+
+    class Game
+    {
+        private int windowWidth = 32;
+        private int windowHeight = 16;
+        private Random random = new Random();
+        public int Score { get; private set; } = 5;
+        private bool isGameOver = false;
+        private Snake snake;
+        private Food food;
+        private DateTime startTime;
+        private DateTime currentTime;
+        public bool DirectionChanged { get; set; } = false;
+
+        public Game()
+        {
+            Console.WindowHeight = windowHeight;
+            Console.WindowWidth = windowWidth;
+            snake = new Snake(windowWidth / 2, windowHeight / 2, this);
+            food = new Food(random.Next(1, windowWidth - 2), random.Next(1, windowHeight - 2));
+        }
+
+        public void Run()
+        {
             while (!isGameOver)
             {
                 Console.Clear();
                 DrawBorders();
                 CheckCollision();
-                DrawSnake();
-                DrawFood();
+                snake.Draw();
+                food.Draw();
                 HandleInput();
-                UpdateSnakePosition();
+                snake.Move();
             }
             EndGame();
         }
 
-        static void InitializeGame()
-        {
-            Console.Clear();
-            Console.WindowHeight = windowHeight;
-            Console.WindowWidth = windowWidth;
-            snakeHead.X = windowWidth / 2;
-            snakeHead.Y = windowHeight / 2;
-            snakeHead.Color = ConsoleColor.Red;
-            foodX = random.Next(1, windowWidth - 2);
-            foodY = random.Next(1, windowHeight - 2);
-        }
-
-        static void DrawBorders()
+        //GOOD
+        private void DrawBorders()
         {
             // Draw top border
             for (int i = 0; i < windowWidth; i++)
@@ -76,136 +78,177 @@ namespace Snake
             }
         }
 
-        static void CheckCollision()
+        private void CheckCollision()
         {
-            // Check collision with borders
-            if (snakeHead.X == windowWidth - 1 || snakeHead.X == 0 ||
-                snakeHead.Y == windowHeight - 1 || snakeHead.Y == 0)
-            {
+            if (snake.CheckCollision(windowWidth, windowHeight))
                 isGameOver = true;
-            }
-            for (int i = 0; i < snakeBodyX.Count; i++)
+
+            if (food.IsEaten(snake.HeadX, snake.HeadY))
             {
-                // Check collision with snake body
-                if (snakeBodyX[i] == snakeHead.X && snakeBodyY[i] == snakeHead.Y)
-                {
-                    isGameOver = true;
-                }
-            }
-            // Check if snake eats the food
-            if (foodX == snakeHead.X && foodY == snakeHead.Y)
-            {
-                score++;
-                foodX = random.Next(1, windowWidth - 2);
-                foodY = random.Next(1, windowHeight - 2);
+                Score++;
+                food.Respawn(random, windowWidth, windowHeight);
+                snake.Grow();
             }
         }
 
-        static void DrawSnake()
+        //GOOD
+        private void HandleInput()
+        {
+            startTime = DateTime.Now;
+            DirectionChanged = false;
+            while (true)
+            {
+                currentTime = DateTime.Now;
+                if ((currentTime - startTime).TotalMilliseconds > 500) break;
+                if (Console.KeyAvailable)
+                {
+                    ConsoleKeyInfo keyInfo = Console.ReadKey(true);
+                    snake.ChangeDirection(keyInfo);
+                }
+            }
+        }
+
+        //GOOD
+        private void EndGame()
+        {
+            Console.SetCursorPosition(windowWidth / 5, windowHeight / 2);
+            Console.WriteLine("Game over, Score: " + Score);
+            Console.SetCursorPosition(windowWidth / 5, windowHeight / 2 + 1);
+        }
+    }
+
+    class Snake
+    {
+        private List<int> bodyX = new List<int>();
+        private List<int> bodyY = new List<int>();
+        private string currentDirection = "RIGHT";
+        public int HeadX { get; private set; }
+        public int HeadY { get; private set; }
+        private ConsoleColor color = ConsoleColor.Red;
+        private Game game;
+
+        public Snake(int startX, int startY, Game gameInstance)
+        {
+            HeadX = startX;
+            HeadY = startY;
+            game = gameInstance;
+        }
+
+        // GOOD
+        public void Draw()
         {
             Console.ForegroundColor = ConsoleColor.Green;
-            // Draw snake body
-            for (int i = 0; i < snakeBodyX.Count; i++)
+            for (int i = 0; i < bodyX.Count; i++)
             {
-                Console.SetCursorPosition(snakeBodyX[i], snakeBodyY[i]);
+                Console.SetCursorPosition(bodyX[i], bodyY[i]);
                 Console.Write("■");
             }
-            // Draw snake head
-            Console.SetCursorPosition(snakeHead.X, snakeHead.Y);
-            Console.ForegroundColor = snakeHead.Color;
+            Console.SetCursorPosition(HeadX, HeadY);
+            Console.ForegroundColor = color;
             Console.Write("■");
         }
 
-        static void DrawFood()
+        //GOOD
+        public void Move()
         {
-            Console.SetCursorPosition(foodX, foodY);
+            bodyX.Add(HeadX);
+            bodyY.Add(HeadY);
+            switch (currentDirection)
+            {
+                case "UP":
+                    HeadY--;
+                    break;
+                case "DOWN":
+                    HeadY++;
+                    break;
+                case "LEFT":
+                    HeadX--;
+                    break;
+                case "RIGHT":
+                    HeadX++;
+                    break;
+            }
+            if (bodyX.Count > game.Score)
+            {
+                bodyX.RemoveAt(0);
+                bodyY.RemoveAt(0);
+            }
+        }
+
+        //GOOD
+        public void ChangeDirection(ConsoleKeyInfo keyInfo)
+        {
+            if (keyInfo.Key == ConsoleKey.UpArrow && currentDirection != "DOWN" && !game.DirectionChanged)
+            {
+                currentDirection = "UP";
+                game.DirectionChanged = true;
+            }
+            if (keyInfo.Key == ConsoleKey.DownArrow && currentDirection != "UP" && !game.DirectionChanged)
+            {
+                currentDirection = "DOWN";
+                game.DirectionChanged = true;
+            }
+            if (keyInfo.Key == ConsoleKey.LeftArrow && currentDirection != "RIGHT" && !game.DirectionChanged)
+            {
+                currentDirection = "LEFT";
+                game.DirectionChanged = true;
+            }
+            if (keyInfo.Key == ConsoleKey.RightArrow && currentDirection != "LEFT" && !game.DirectionChanged)
+            {
+                currentDirection = "RIGHT";
+                game.DirectionChanged = true;
+            }
+        }
+
+        //GOOD
+        public bool CheckCollision(int width, int height)
+        {
+            if (HeadX == width - 1 || HeadX == 0 ||
+                HeadY == height - 1 || HeadY == 0)
+                return true;
+            for (int i = 0; i < bodyX.Count; i++)
+            {
+                if (bodyX[i] == HeadX && bodyY[i] == HeadY)
+                    return true;
+            }
+            return false;
+        }
+
+        public void Grow()
+        {
+            bodyX.Insert(0, HeadX);
+            bodyY.Insert(0, HeadY);
+        }
+    }
+
+    //ALL GOOD
+    class Food
+    {
+        private int x;
+        private int y;
+
+        public Food(int startX, int startY)
+        {
+            x = startX;
+            y = startY;
+        }
+
+        public void Draw()
+        {
+            Console.SetCursorPosition(x, y);
             Console.ForegroundColor = ConsoleColor.Cyan;
             Console.Write("■");
         }
 
-        static void HandleInput()
+        public bool IsEaten(int snakeX, int snakeY)
         {
-            // Handle input and delay movement
-            startTime = DateTime.Now;
-            directionChanged = false;
-            while (true)
-            {
-                currentTime = DateTime.Now;
-                if (currentTime.Subtract(startTime).TotalMilliseconds > 500) { break; }
-                if (Console.KeyAvailable)
-                {
-                    ConsoleKeyInfo keyInfo = Console.ReadKey(true);
-                    // Update direction if a valid key is pressed and direction hasn't changed yet
-                    ChangeDirection(keyInfo);
-                }
-            }
+            return x == snakeX && y == snakeY;
         }
 
-        static void ChangeDirection(ConsoleKeyInfo keyInfo)
+        public void Respawn(Random random, int width, int height)
         {
-            if (keyInfo.Key == ConsoleKey.UpArrow && currentDirection != "DOWN" && !directionChanged)
-            {
-                currentDirection = "UP";
-                directionChanged = true;
-            }
-            if (keyInfo.Key == ConsoleKey.DownArrow && currentDirection != "UP" && !directionChanged)
-            {
-                currentDirection = "DOWN";
-                directionChanged = true;
-            }
-            if (keyInfo.Key == ConsoleKey.LeftArrow && currentDirection != "RIGHT" && !directionChanged)
-            {
-                currentDirection = "LEFT";
-                directionChanged = true;
-            }
-            if (keyInfo.Key == ConsoleKey.RightArrow && currentDirection != "LEFT" && !directionChanged)
-            {
-                currentDirection = "RIGHT";
-                directionChanged = true;
-            }
-        }
-
-        static void UpdateSnakePosition()
-        {
-            // Add current head position to body lists
-            snakeBodyX.Add(snakeHead.X);
-            snakeBodyY.Add(snakeHead.Y);
-            // Update snake head position based on direction
-            switch (currentDirection)
-            {
-                case "UP":
-                    snakeHead.Y--;
-                    break;
-                case "DOWN":
-                    snakeHead.Y++;
-                    break;
-                case "LEFT":
-                    snakeHead.X--;
-                    break;
-                case "RIGHT":
-                    snakeHead.X++;
-                    break;
-            }
-            // Remove tail if the snake is longer than the score
-            if (snakeBodyX.Count > score)
-            {
-                snakeBodyX.RemoveAt(0);
-                snakeBodyY.RemoveAt(0);
-            }
-        }
-
-        static void EndGame()
-        {
-            Console.SetCursorPosition(windowWidth / 5, windowHeight / 2);
-            Console.WriteLine("Game over, Score: " + score);
-            Console.SetCursorPosition(windowWidth / 5, windowHeight / 2 + 1);
-        }
-
-        class Pixel
-        {
-            public int X { get; set; }
-            public int Y { get; set; }
-            public ConsoleColor Color { get; set; }
+            x = random.Next(1, width - 2);
+            y = random.Next(1, height - 2);
         }
     }
 }
