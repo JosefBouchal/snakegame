@@ -49,7 +49,6 @@ namespace Snake
             EndGame();
         }
 
-        //GOOD
         private void DrawBorders()
         {
             // Draw top border
@@ -91,7 +90,6 @@ namespace Snake
             }
         }
 
-        //GOOD
         private void HandleInput()
         {
             startTime = DateTime.Now;
@@ -108,7 +106,6 @@ namespace Snake
             }
         }
 
-        //GOOD
         private void EndGame()
         {
             Console.SetCursorPosition(windowWidth / 5, windowHeight / 2);
@@ -134,7 +131,6 @@ namespace Snake
             game = gameInstance;
         }
 
-        // GOOD
         public void Draw()
         {
             Console.ForegroundColor = ConsoleColor.Green;
@@ -148,7 +144,6 @@ namespace Snake
             Console.Write("■");
         }
 
-        //GOOD
         public void Move()
         {
             bodyX.Add(HeadX);
@@ -175,7 +170,6 @@ namespace Snake
             }
         }
 
-        //GOOD
         public void ChangeDirection(ConsoleKeyInfo keyInfo)
         {
             if (keyInfo.Key == ConsoleKey.UpArrow && currentDirection != "DOWN" && !game.DirectionChanged)
@@ -200,7 +194,6 @@ namespace Snake
             }
         }
 
-        //GOOD
         public bool CheckCollision(int width, int height)
         {
             if (HeadX == width - 1 || HeadX == 0 ||
@@ -221,7 +214,6 @@ namespace Snake
         }
     }
 
-    //ALL GOOD
     class Food
     {
         private int x;
